@@ -209,6 +209,51 @@ class arXiv:
 
         return self.query(params)
 
+    def abbreviated_normalized_name(self, name):
+        x = name.split(",")
+
+        # Last, First
+        if len(x) > 1:
+            last = x[0]
+            first = x[1]
+        else:
+            x = name.split(".")
+            # First Middle Last
+            if len(x) == 1:
+                y = name.split(" ")
+
+                # First del Last
+                has_lower = False
+                for i, a in enumerate(y):
+                    if a[0].islower():
+                        has_lower = True
+                        first = u" ".join(y[:i])
+                        last = u" ".join(y[i:])
+
+                if not has_lower:
+                    first = u" ".join(y[:-1])
+                    last = y[-1]
+            # F. Last
+            elif len(x) == 2:
+                first = x[0]
+                last = x[1]
+            # F. M. Last
+            else:
+                first = u" ".join([y.strip() for y in x[:-1]])
+                last = x[-1]
+
+        first = first.strip()
+        last = last.strip()
+
+        if first:
+            first = [u"{}.".format(x[0]) for x in first.split(" ")]
+            first = u" ".join(first)
+            name = u"{}, {}".format(last, first)
+        else:
+            name = last
+
+        return name
+
     def parse(self, xml):
         '''Parses the return XML from the arXiv API'''
         feed = feedparser.parse(xml)
@@ -228,7 +273,7 @@ class arXiv:
             a_id = entry.id.split('/abs/')[-1]
             default_ref = "arXiv:{0}".format(a_id)
 
-            authors = [author.get('name', '') for author in entry.get('authors', [])]
+            authors = [self.abbreviated_normalized_name(author.get('name', '')) for author in entry.get('authors', [])]
             authors = ' and '.join(authors)
 
             categories = ', '.join([t['term'] for t in entry.tags])
